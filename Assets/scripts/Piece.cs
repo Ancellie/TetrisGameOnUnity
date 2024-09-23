@@ -4,21 +4,17 @@ using Unity.VisualScripting;
 
 public class Piece : MonoBehaviour
 {
-    private float fallTime = 1f;
-    private float fastFallTime = 0.1f;
-    private float nextFallTime;
-    private float moveDelay = 0.1f;
-    private float nextMoveTime;
-    private bool isFastDropping = false;
-    private bool isMovingLeft = false;
-    private bool isMovingRight = false;
-    private Coroutine fastDropCoroutine;
-    
     public Board board { get; private set; }
     public TetrominoData data { get; private set; }
     public Vector3Int position { get; private set; }
     public Vector3Int[] cells { get; private set; }
     public int rotationIndex { get; private set; }
+
+    public float stepDelay = 1f;
+    public float lockDelay = 0.5f;
+
+    private float stepTime;
+    private float lockTime;
     
     
     public void Initialize(Board board, Vector3Int position, TetrominoData data)
@@ -27,6 +23,8 @@ public class Piece : MonoBehaviour
         this.position = position;
         this.data = data;
         this.rotationIndex = 0;
+        this.stepTime = Time.time + this.stepDelay;
+        this.lockDelay = 0.5f;
         
         if (this.cells == null)
         {
@@ -39,46 +37,43 @@ public class Piece : MonoBehaviour
         }
     }
     
-    private void Start()
-    {
-        nextFallTime = Time.time + fallTime;
-    }
-    
     private void Update()
     {
         this.board.Clear(this);
 
-        if (Time.time >= nextFallTime)
-        {
-            Move(Vector2Int.down);
-            nextFallTime = Time.time + (isFastDropping ? fastFallTime : fallTime);
-        }
+        this.lockTime += Time.deltaTime + 0.1f;
 
-        if (Time.time >= nextMoveTime)
+        if (Time.time >= this.stepTime)
         {
-            if (isMovingLeft)
-            {
-                Move(Vector2Int.left);
-                nextMoveTime = Time.time + moveDelay;
-            }
-            else if (isMovingRight)
-            {
-                Move(Vector2Int.right);
-                nextMoveTime = Time.time + moveDelay;
-            }
+            Step();
         }
-
+        
         this.board.Set(this);
     }
-    
+
+    private void Step()
+    {
+        this.stepTime = Time.time + this.stepDelay;
+
+        Move(Vector2Int.down);
+
+        if (this.lockTime >= this.lockDelay)
+        {
+            Lock();
+        }
+    }
+
+    private void Lock()
+    {
+        this.board.Set(this);
+        this.board.SpawnPiece();
+    }
+
+
     public void RotateRight()
     {
         this.board.Clear(this);
         Rotate(1);
-        /*if (!TestWallKicks(this.rotationIndex, -1))
-        {
-            Rotate(1);
-        }*/
         this.board.Set(this);
     }
 
@@ -86,76 +81,30 @@ public class Piece : MonoBehaviour
     {
         this.board.Clear(this);
         Rotate(-1);
-        /*if (!TestWallKicks(this.rotationIndex, -1))
-        {
-            Rotate(1);
-        }*/
         this.board.Set(this);
     }
     public void MoveLeft()
     {
         this.board.Clear(this);
-        isMovingLeft = true;
-        isMovingRight = false;
         Move(Vector2Int.left);
-        nextMoveTime = Time.time + moveDelay;
         this.board.Set(this);
     }
 
     public void MoveRight()
     {
         this.board.Clear(this);
-        isMovingRight = true;
-        isMovingLeft = false;
         Move(Vector2Int.right);
-        nextMoveTime = Time.time + moveDelay;
         this.board.Set(this);
-    }
-
-    public void StopMoving()
-    {
-        isMovingLeft = false;
-        isMovingRight = false;
     }
     
     public void StartFastDrop()
     {
-        if (fastDropCoroutine != null)
-        {
-            StopCoroutine(fastDropCoroutine);
-        }
-        fastDropCoroutine = StartCoroutine(FastDropCoroutine());
+        stepDelay = 0.1f;
     }
 
     public void StopFastDrop()
     {
-        if (fastDropCoroutine != null)
-        {
-            StopCoroutine(fastDropCoroutine);
-            fastDropCoroutine = null;
-        }
-        isFastDropping = false;
-        nextFallTime = Time.time + fallTime;
-    }
-
-    private IEnumerator FastDropCoroutine()
-    {
-        isFastDropping = true;
-        while (true)
-        {
-            this.board.Clear(this);
-            bool moved = Move(Vector2Int.down);
-            this.board.Set(this);
-
-            if (!moved)
-            {
-                break;
-            }
-
-            yield return new WaitForSeconds(fastFallTime);
-        }
-        isFastDropping = false;
-        nextFallTime = Time.time + fallTime;
+        stepDelay = 0.5f;
     }
 
     private bool Move(Vector2Int translation)
@@ -169,6 +118,7 @@ public class Piece : MonoBehaviour
         if (valid)
         {
             this.position = newPosition;
+            this.lockTime = 0f;
         }
 
         return valid;
