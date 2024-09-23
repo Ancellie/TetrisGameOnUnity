@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using Unity.VisualScripting;
 
 public class Piece : MonoBehaviour
 {
@@ -17,6 +18,7 @@ public class Piece : MonoBehaviour
     public TetrominoData data { get; private set; }
     public Vector3Int position { get; private set; }
     public Vector3Int[] cells { get; private set; }
+    public int rotationIndex { get; private set; }
     
     
     public void Initialize(Board board, Vector3Int position, TetrominoData data)
@@ -24,7 +26,8 @@ public class Piece : MonoBehaviour
         this.board = board;
         this.position = position;
         this.data = data;
-
+        this.rotationIndex = 0;
+        
         if (this.cells == null)
         {
             this.cells = new Vector3Int[data.cells.Length];
@@ -68,6 +71,19 @@ public class Piece : MonoBehaviour
         this.board.Set(this);
     }
     
+    public void RotateRight()
+    {
+        this.board.Clear(this);
+        Rotate(1);
+        this.board.Set(this);
+    }
+
+    public void RotateLeft()
+    {
+        this.board.Clear(this);
+        Rotate(-1);
+        this.board.Set(this);
+    }
     public void MoveLeft()
     {
         this.board.Clear(this);
@@ -149,5 +165,49 @@ public class Piece : MonoBehaviour
 
         return valid;
     }
-    
+
+    private void Rotate(int direction)
+    {
+        this.rotationIndex = Wrap(this.rotationIndex + direction, 0, 4);
+
+        for (int i = 0; i < this.cells.Length; i++)
+        {
+            Vector3 cell = this.cells[i];
+
+            int x, y;
+            
+            switch (this.data.tetromino)
+            {
+                case Tetromino.I:
+                case Tetromino.O:
+                    cell.x -= 0.5f;
+                    cell.y -= 0.5f;
+                    x = Mathf.CeilToInt((cell.x * Data.RotationMatrix[0] * direction) +
+                                         (cell.y * Data.RotationMatrix[1] * direction));
+                    y = Mathf.CeilToInt((cell.x * Data.RotationMatrix[2] * direction) +
+                                         (cell.y * Data.RotationMatrix[3] * direction));
+                    break;
+                default:
+                    x = Mathf.RoundToInt((cell.x * Data.RotationMatrix[0] * direction) +
+                                             (cell.y * Data.RotationMatrix[1] * direction));
+                    y = Mathf.RoundToInt((cell.x * Data.RotationMatrix[2] * direction) +
+                                             (cell.y * Data.RotationMatrix[3] * direction));
+                break;
+            }
+
+            this.cells[i] = new Vector3Int(x, y, 0);
+        }
+    }
+
+    private int Wrap(int input, int min, int max)
+    {
+        if (input < min)
+        {
+            return max - (min - input) % (max - min);
+        }
+        else
+        {
+            return min + (input - min) % (max - min);
+        }
+    }
 }
