@@ -75,6 +75,10 @@ public class Piece : MonoBehaviour
     {
         this.board.Clear(this);
         Rotate(1);
+        /*if (!TestWallKicks(this.rotationIndex, -1))
+        {
+            Rotate(1);
+        }*/
         this.board.Set(this);
     }
 
@@ -82,6 +86,10 @@ public class Piece : MonoBehaviour
     {
         this.board.Clear(this);
         Rotate(-1);
+        /*if (!TestWallKicks(this.rotationIndex, -1))
+        {
+            Rotate(1);
+        }*/
         this.board.Set(this);
     }
     public void MoveLeft()
@@ -166,10 +174,8 @@ public class Piece : MonoBehaviour
         return valid;
     }
 
-    private void Rotate(int direction)
+    private void ApplyrotationMatrix(int direction)
     {
-        this.rotationIndex = Wrap(this.rotationIndex + direction, 0, 4);
-
         for (int i = 0; i < this.cells.Length; i++)
         {
             Vector3 cell = this.cells[i];
@@ -183,20 +189,62 @@ public class Piece : MonoBehaviour
                     cell.x -= 0.5f;
                     cell.y -= 0.5f;
                     x = Mathf.CeilToInt((cell.x * Data.RotationMatrix[0] * direction) +
-                                         (cell.y * Data.RotationMatrix[1] * direction));
+                                        (cell.y * Data.RotationMatrix[1] * direction));
                     y = Mathf.CeilToInt((cell.x * Data.RotationMatrix[2] * direction) +
-                                         (cell.y * Data.RotationMatrix[3] * direction));
+                                        (cell.y * Data.RotationMatrix[3] * direction));
                     break;
                 default:
                     x = Mathf.RoundToInt((cell.x * Data.RotationMatrix[0] * direction) +
-                                             (cell.y * Data.RotationMatrix[1] * direction));
+                                         (cell.y * Data.RotationMatrix[1] * direction));
                     y = Mathf.RoundToInt((cell.x * Data.RotationMatrix[2] * direction) +
-                                             (cell.y * Data.RotationMatrix[3] * direction));
-                break;
+                                         (cell.y * Data.RotationMatrix[3] * direction));
+                    break;
             }
 
             this.cells[i] = new Vector3Int(x, y, 0);
         }
+    }
+    
+    private void Rotate(int direction)
+    {
+        int originalRotation = this.rotationIndex;   
+        this.rotationIndex = Wrap(this.rotationIndex + direction, 0, 4);
+
+        ApplyrotationMatrix(direction);
+        
+        if (!TestWallKicks(this.rotationIndex, direction))
+        {
+            this.rotationIndex = originalRotation;
+            ApplyrotationMatrix(-direction);
+        }
+    }
+
+    private bool TestWallKicks(int rotationIndex, int rotationDirection)
+    {
+        int wallKickIndex = GetwallKickIndex(rotationIndex, rotationDirection);
+
+        for (int i = 0; i < this.data.wallkicks.GetLength(1); i++)
+        {
+            Vector2Int translation = this.data.wallkicks[wallKickIndex, i];
+
+            if (Move(translation))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private int GetwallKickIndex(int rotationIndex, int rotationDirection)
+    {
+        int wallKickIndex = rotationIndex * 2;
+        if (rotationDirection < 0)
+        {
+            wallKickIndex--;
+        }
+
+        return Wrap(wallKickIndex, 0, this.data.wallkicks.GetLength(0));
     }
 
     private int Wrap(int input, int min, int max)
