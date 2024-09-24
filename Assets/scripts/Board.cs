@@ -1,8 +1,5 @@
-using System;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using UnityEngine.WSA;
 using Random = UnityEngine.Random;
 
 public class Board : MonoBehaviour
@@ -55,6 +52,13 @@ public class Board : MonoBehaviour
         }
         
         Set(this.activePiece);
+    }
+
+    public void RestartGame()
+    {
+        this.tilemap.ClearAllTiles();
+        this.Clear(this.activePiece);
+        this.SpawnPiece();
     }
 
     private void GameOver()
